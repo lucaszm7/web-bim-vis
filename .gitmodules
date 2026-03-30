@@ -1,0 +1,3 @@
+[submodule "ifc-parser-wasm"]
+	path = ifc-parser-wasm
+	url = https://github.com/lucaszm7/ifc-parser-wasm

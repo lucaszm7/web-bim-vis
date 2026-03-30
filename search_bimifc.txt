@@ -1,7 +1,0 @@
-bimifc-bevy = "0.2.0"          # Bevy-based 3D viewer for IFC models with WebGPU/WebGL2 rendering
-bimifc-geometry = "0.2.0"      # Geometry processing for IFC models
-bimifc-leptos = "0.2.0"        # Leptos-based UI components for BIM IFC viewer
-bimifc-model = "0.2.0"         # Trait definitions and shared types for BIM IFC parsing
-bimifc-parser = "0.2.0"        # High-performance IFC parser with IFC4 (STEP) and IFC5 (IFCX) support
-bimifc-viewer = "0.2.0"        # BIM IFC web viewer - Leptos UI + Bevy 3D
-bimifc-viewer-tui = "0.2.0"    # Terminal-based IFC viewer with floor plan rendering
