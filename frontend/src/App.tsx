@@ -92,8 +92,8 @@ function App() {
       canvas.height = Math.floor(canvas.clientHeight * dpr);
 
       try {
-        // IfcViewer constructor is async (returns a Promise from wasm-bindgen)
-        const viewer = await (new IfcViewer('webgpu-canvas') as unknown as Promise<IfcViewer>);
+        // IfcViewer initialization is async
+        const viewer = await IfcViewer.create('webgpu-canvas');
         viewerRef.current = viewer;
         viewer.update_camera();
         startRenderLoop(viewer);
