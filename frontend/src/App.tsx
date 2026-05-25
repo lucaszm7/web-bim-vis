@@ -27,11 +27,11 @@ interface IfcMetadataResponse {
 const SpatialNodeTree = ({ node, level = 0 }: { node: SpatialNodeDto; level?: number }) => {
   const [expanded, setExpanded] = useState(level < 2); // Expand top levels by default
   const hasChildren = node.children && node.children.length > 0;
-  
+
   return (
     <div className="spatial-node">
-      <div 
-        className={`node-header ${hasChildren ? 'clickable' : ''}`} 
+      <div
+        className={`node-header ${hasChildren ? 'clickable' : ''}`}
         style={{ paddingLeft: `${level * 16}px` }}
         onClick={() => hasChildren && setExpanded(!expanded)}
         title={node.attributes}
@@ -216,7 +216,7 @@ function App() {
       const result: IfcMetadataResponse = JSON.parse(resultJson);
       if (result.success) {
         setRootNode(result.root);
-        
+
         let count = 0;
         const countElements = (n: SpatialNodeDto) => {
           count++;
