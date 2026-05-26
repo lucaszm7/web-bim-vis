@@ -10,6 +10,8 @@ function wasmPlugin(): Plugin {
   const wasmSource = path.resolve(process.cwd(), '../ifc-parser-wasm/pkg/ifc_parser_wasm_bg.wasm');
   const wasmDest = path.resolve(process.cwd(), 'public/ifc_parser_wasm_bg.wasm');
 
+  const isDev = !process.argv.includes('build');
+
   const buildWasm = () => {
     console.log('\n[wasmPlugin] Building Rust WASM project...');
     try {
@@ -39,7 +41,9 @@ function wasmPlugin(): Plugin {
   return {
     name: 'wasm-plugin',
     buildStart() {
-      buildWasm();
+      if (isDev) {
+        buildWasm();
+      }
       copyWasm();
     },
     configureServer(server) {
@@ -50,7 +54,7 @@ function wasmPlugin(): Plugin {
       server.watcher.on('all', async (_event, filePath) => {
         const normalizedPath = path.normalize(filePath);
 
-        if (normalizedPath.startsWith(path.normalize(rustSrcDir)) && (filePath.endsWith('.rs') || filePath.endsWith('.wgsl'))) {
+        if (normalizedPath.startsWith(path.normalize(rustSrcDir)) && filePath.endsWith('.rs')) {
           if (isBuilding) {
             console.log(`\n[wasmPlugin] Already building. Skipping...`);
             return;
@@ -67,6 +71,20 @@ function wasmPlugin(): Plugin {
           }
         }
 
+        if (filePath.endsWith('.wgsl')) {
+          console.log(`\n[wasmPlugin] Shader file changed: ${path.basename(filePath)}. Sending custom HMR update...`);
+          try {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            server.hot.send({
+              type: 'custom',
+              event: 'shader-update',
+              data: { code: content }
+            });
+          } catch (e) {
+            console.error('[wasmPlugin] Failed to read shader file for hot-reload:', e);
+          }
+        }
+
         if (normalizedPath === path.normalize(wasmSource)) {
           server.hot.send({ type: 'full-reload' });
         }
@@ -79,6 +97,9 @@ function wasmPlugin(): Plugin {
 export default defineConfig({
   plugins: [react(), wasmPlugin()],
   server: {
+    fs: {
+      allow: ['..']
+    },
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp',

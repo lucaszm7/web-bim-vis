@@ -81,6 +81,8 @@ function App() {
   // ── Initialize WASM + Viewer ──────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
+    let handleShaderUpdate: ((data: { code: string }) => void) | null = null;
+
     initWasm(wasmUrl).then(async () => {
       if (cancelled) return;
       setIsWasmReady(true);
@@ -97,6 +99,19 @@ function App() {
         viewerRef.current = viewer;
         viewer.update_camera();
         startRenderLoop(viewer);
+
+        // Register custom HMR shader update listener when viewer is fully initialized
+        if (import.meta.hot) {
+          handleShaderUpdate = (data: { code: string }) => {
+            console.log('🔥 Hot-reloading shader via WebSocket event...');
+            try {
+              viewer.update_shader(data.code);
+            } catch (err) {
+              console.error('Failed to reload shader:', err);
+            }
+          };
+          import.meta.hot.on('shader-update', handleShaderUpdate);
+        }
       } catch (e: any) {
         console.error('WebGPU init failed:', e);
         setRenderError(String(e?.message ?? e));
@@ -111,6 +126,9 @@ function App() {
       cancelAnimationFrame(rafRef.current);
       viewerRef.current?.free();
       viewerRef.current = null;
+      if (import.meta.hot && handleShaderUpdate) {
+        import.meta.hot.off('shader-update', handleShaderUpdate);
+      }
     };
   }, []);
 
