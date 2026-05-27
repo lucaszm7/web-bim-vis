@@ -7,7 +7,7 @@ curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 # 2. Build your Rust project into WebAssembly
 # (Replace './your-rust-folder' with the actual path to your Rust code)
 echo "Compiling Rust to WASM on vercel..."
-wasm-pack build ./your-rust-folder --target web
+wasm-pack build ../ifc-parser-wasm --target web
 
 # 3. Run your standard frontend build 
 # (Change to `yarn build` or `pnpm build` if necessary)
