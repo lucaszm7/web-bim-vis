@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { UploadCloud, FileBox, Database, ChevronDown, ChevronRight, Cpu, Box, RotateCcw } from 'lucide-react';
+import { UploadCloud, FileBox, Database, ChevronDown, ChevronRight, Cpu, Box, RotateCcw, Settings } from 'lucide-react';
 import './index.css';
 
 // Import WASM
@@ -70,6 +70,7 @@ function App() {
   const [hasGeometry, setHasGeometry] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [statsText, setStatsText] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [showPerformance, setShowPerformance] = useState(() => {
     return localStorage.getItem('showPerformance') === 'true';
@@ -444,28 +445,44 @@ function App() {
               {fileName ?? 'No model loaded'}
             </div>
           </div>
-          <Database size={22} color="var(--accent)" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button
+              id="settings-toggle-btn"
+              className={`settings-icon-btn${settingsOpen ? ' active' : ''}`}
+              onClick={() => setSettingsOpen(o => !o)}
+              title="Settings"
+              aria-label="Toggle settings"
+              aria-expanded={settingsOpen}
+            >
+              <Settings size={18} />
+            </button>
+            <Database size={22} color="var(--accent)" />
+          </div>
         </div>
 
-        <div className="sidebar-settings" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem' }}>
-          <label className="settings-label">
-            <input
-              type="checkbox"
-              className="settings-checkbox"
-              checked={autoLoadDuplex}
-              onChange={(e) => handleAutoLoadToggle(e.target.checked)}
-            />
-            <span>Auto-load Duplex on startup</span>
-          </label>
-          <label className="settings-label">
-            <input
-              type="checkbox"
-              className="settings-checkbox"
-              checked={showPerformance}
-              onChange={(e) => handlePerformanceToggle(e.target.checked)}
-            />
-            <span>Show performance metrics</span>
-          </label>
+        {/* Settings Dropdown */}
+        <div className={`settings-dropdown${settingsOpen ? ' open' : ''}`} aria-hidden={!settingsOpen}>
+          <div className="settings-dropdown-inner">
+            <div className="settings-dropdown-title">Settings</div>
+            <label className="settings-label">
+              <input
+                type="checkbox"
+                className="settings-checkbox"
+                checked={autoLoadDuplex}
+                onChange={(e) => handleAutoLoadToggle(e.target.checked)}
+              />
+              <span>Auto-load Duplex on startup</span>
+            </label>
+            <label className="settings-label">
+              <input
+                type="checkbox"
+                className="settings-checkbox"
+                checked={showPerformance}
+                onChange={(e) => handlePerformanceToggle(e.target.checked)}
+              />
+              <span>Show performance metrics</span>
+            </label>
+          </div>
         </div>
 
         <div className="sidebar-content">
