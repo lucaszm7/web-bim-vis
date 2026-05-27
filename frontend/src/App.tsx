@@ -71,10 +71,21 @@ function App() {
   const [renderError, setRenderError] = useState<string | null>(null);
   const [statsText, setStatsText] = useState('');
 
+  const [showPerformance, setShowPerformance] = useState(() => {
+    return localStorage.getItem('showPerformance') === 'true';
+  });
+  const [fps, setFps] = useState(0);
+  const [frameTime, setFrameTime] = useState(0);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewerRef = useRef<IfcViewer | null>(null);
   const rafRef = useRef<number>(0);
   const dragCounterRef = useRef(0);
+
+  // Performance tracking refs
+  const frameCountRef = useRef(0);
+  const firstTickTimeRef = useRef(performance.now());
+  const accumulatedTickTimeRef = useRef(0);
 
   // Auto-load Duplex model if enabled in localStorage
   const [autoLoadDuplex, setAutoLoadDuplex] = useState(() => {
@@ -218,8 +229,14 @@ function App() {
     }
   }, [fileName, isWasmReady, processIfcContent]);
 
+  const handlePerformanceToggle = useCallback((checked: boolean) => {
+    setShowPerformance(checked);
+    localStorage.setItem('showPerformance', String(checked));
+  }, []);
+
   // ── Render Loop ───────────────────────────────────────────────────────────
   const startRenderLoop = (viewer: IfcViewer) => {
+    firstTickTimeRef.current = performance.now();
     const loop = () => {
       try {
         viewer.render();
@@ -229,6 +246,24 @@ function App() {
           console.warn('Render error:', e);
         }
       }
+      const lastTickTime = performance.now();
+      const tickTime = lastTickTime - firstTickTimeRef.current;
+      firstTickTimeRef.current = lastTickTime;
+
+      frameCountRef.current++;
+      accumulatedTickTimeRef.current += tickTime;
+
+      if (frameCountRef.current >= 30) {
+        const avgTickTime = accumulatedTickTimeRef.current / frameCountRef.current;
+        const calculatedFps = avgTickTime > 0 ? 1000 / avgTickTime : 0;
+
+        setFps(calculatedFps);
+        setFrameTime(avgTickTime);
+
+        frameCountRef.current = 0;
+        accumulatedTickTimeRef.current = 0;
+      }
+
       rafRef.current = requestAnimationFrame(loop);
     };
     rafRef.current = requestAnimationFrame(loop);
@@ -358,6 +393,20 @@ function App() {
           </div>
         )}
 
+        {/* Performance Overlay HUD */}
+        {showPerformance && (
+          <div className="performance-overlay glass-panel">
+            <div className="perf-metric">
+              <span className="perf-label">FPS</span>
+              <span className="perf-value">{fps.toFixed(2)}</span>
+            </div>
+            <div className="perf-metric">
+              <span className="perf-label">Frame Time</span>
+              <span className="perf-value">{frameTime.toFixed(2)} ms</span>
+            </div>
+          </div>
+        )}
+
         {/* Error banner */}
         {renderError && (
           <div className="error-banner">
@@ -398,7 +447,7 @@ function App() {
           <Database size={22} color="var(--accent)" />
         </div>
 
-        <div className="sidebar-settings">
+        <div className="sidebar-settings" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem' }}>
           <label className="settings-label">
             <input
               type="checkbox"
@@ -407,6 +456,15 @@ function App() {
               onChange={(e) => handleAutoLoadToggle(e.target.checked)}
             />
             <span>Auto-load Duplex on startup</span>
+          </label>
+          <label className="settings-label">
+            <input
+              type="checkbox"
+              className="settings-checkbox"
+              checked={showPerformance}
+              onChange={(e) => handlePerformanceToggle(e.target.checked)}
+            />
+            <span>Show performance metrics</span>
           </label>
         </div>
 
