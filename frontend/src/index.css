@@ -116,6 +116,29 @@ body {
   margin-top: 0.25rem;
 }
 
+.sidebar-settings {
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.settings-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.settings-checkbox {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 .sidebar-content {
   flex: 1;
   overflow-y: auto;

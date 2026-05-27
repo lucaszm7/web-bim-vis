@@ -76,8 +76,53 @@ function App() {
   const rafRef = useRef<number>(0);
   const dragCounterRef = useRef(0);
 
+  // Auto-load Duplex model if enabled in localStorage
+  const [autoLoadDuplex, setAutoLoadDuplex] = useState(() => {
+    return localStorage.getItem('autoLoadDuplex') === 'true';
+  });
+
   // Pointer state for orbit controls
   const pointerRef = useRef({ down: false, lastX: 0, lastY: 0 });
+
+  const processIfcContent = useCallback(async (name: string, text: string) => {
+    setFileName(name);
+    setIsProcessing(true);
+    setRootNode(null);
+    setHasGeometry(false);
+    setRenderError(null);
+
+    try {
+      // 1. Load geometry into WebGPU
+      try {
+        viewerRef.current?.load_ifc_geometry(text);
+        setHasGeometry(true);
+      } catch (geoErr: any) {
+        console.warn('Geometry loading partial/failed:', geoErr);
+      }
+
+      // 2. Parse metadata for sidebar
+      const resultJson = parse_ifc_metadata(text);
+      const result: IfcMetadataResponse = JSON.parse(resultJson);
+      if (result.success) {
+        setRootNode(result.root);
+
+        let count = 0;
+        const countElements = (n: SpatialNodeDto) => {
+          count++;
+          n.children?.forEach(countElements);
+        };
+        if (result.root) countElements(result.root);
+        setStatsText(`${count} entities`);
+      } else {
+        setRenderError('Parser error: ' + result.error);
+      }
+    } catch (e: any) {
+      console.error(e);
+      setRenderError(e?.message ?? String(e));
+    } finally {
+      setIsProcessing(false);
+    }
+  }, []);
 
   // ── Initialize WASM + Viewer ──────────────────────────────────────────────
   useEffect(() => {
@@ -100,6 +145,26 @@ function App() {
         viewerRef.current = viewer;
         viewer.update_camera();
         startRenderLoop(viewer);
+
+        // Auto-load Duplex on startup if enabled in localStorage
+        const shouldAutoLoad = localStorage.getItem('autoLoadDuplex') === 'true';
+        if (shouldAutoLoad && !cancelled) {
+          setIsProcessing(true);
+          try {
+            const res = await fetch('/DuplexA.ifc');
+            if (!res.ok) throw new Error('Failed to fetch default Duplex model');
+            const text = await res.text();
+            if (!cancelled) {
+              await processIfcContent('DuplexA.ifc', text);
+            }
+          } catch (e: any) {
+            console.error(e);
+            if (!cancelled) {
+              setRenderError(e?.message ?? String(e));
+              setIsProcessing(false);
+            }
+          }
+        }
 
         // Register custom HMR shader update listener when viewer is fully initialized
         if (import.meta.hot) {
@@ -132,6 +197,26 @@ function App() {
       }
     };
   }, []);
+
+  const handleAutoLoadToggle = useCallback(async (checked: boolean) => {
+    setAutoLoadDuplex(checked);
+    localStorage.setItem('autoLoadDuplex', String(checked));
+
+    // Only load DuplexA if enabling it and there is no model currently loaded
+    if (checked && !fileName && isWasmReady && viewerRef.current) {
+      setIsProcessing(true);
+      try {
+        const res = await fetch('/DuplexA.ifc');
+        if (!res.ok) throw new Error('Failed to fetch default Duplex model');
+        const text = await res.text();
+        await processIfcContent('DuplexA.ifc', text);
+      } catch (e: any) {
+        console.error(e);
+        setRenderError(e?.message ?? String(e));
+        setIsProcessing(false);
+      }
+    }
+  }, [fileName, isWasmReady, processIfcContent]);
 
   // ── Render Loop ───────────────────────────────────────────────────────────
   const startRenderLoop = (viewer: IfcViewer) => {
@@ -231,46 +316,8 @@ function App() {
       alert('Engine still initializing, please wait.');
       return;
     }
-    setFileName(file.name);
-    setIsProcessing(true);
-    setRootNode(null);
-    setHasGeometry(false);
-    setRenderError(null);
-
-    try {
-      const text = await file.text();
-
-      // 1. Load geometry into WebGPU
-      try {
-        viewerRef.current.load_ifc_geometry(text);
-        setHasGeometry(true);
-      } catch (geoErr: any) {
-        console.warn('Geometry loading partial/failed:', geoErr);
-        // Continue — at minimum show metadata
-      }
-
-      // 2. Parse metadata for sidebar
-      const resultJson = parse_ifc_metadata(text);
-      const result: IfcMetadataResponse = JSON.parse(resultJson);
-      if (result.success) {
-        setRootNode(result.root);
-
-        let count = 0;
-        const countElements = (n: SpatialNodeDto) => {
-          count++;
-          n.children?.forEach(countElements);
-        };
-        if (result.root) countElements(result.root);
-        setStatsText(`${count} entities`);
-      } else {
-        setRenderError('Parser error: ' + result.error);
-      }
-    } catch (e: any) {
-      console.error(e);
-      setRenderError(e?.message ?? String(e));
-    } finally {
-      setIsProcessing(false);
-    }
+    const text = await file.text();
+    await processIfcContent(file.name, text);
   };
 
   const showOverlay = isDragging || (!fileName && !isProcessing);
@@ -349,6 +396,18 @@ function App() {
             </div>
           </div>
           <Database size={22} color="var(--accent)" />
+        </div>
+
+        <div className="sidebar-settings">
+          <label className="settings-label">
+            <input
+              type="checkbox"
+              className="settings-checkbox"
+              checked={autoLoadDuplex}
+              onChange={(e) => handleAutoLoadToggle(e.target.checked)}
+            />
+            <span>Auto-load Duplex on startup</span>
+          </label>
         </div>
 
         <div className="sidebar-content">
