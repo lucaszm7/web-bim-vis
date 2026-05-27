@@ -4,6 +4,9 @@
 echo "Installing wasm-pack on vercel..."
 curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
+echo "Adding WASM target..."
+rustup target add wasm32-unknown-unknown
+
 # 2. Build your Rust project into WebAssembly
 # (Replace './your-rust-folder' with the actual path to your Rust code)
 echo "Compiling Rust to WASM on vercel..."
