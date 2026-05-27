@@ -143,6 +143,10 @@ body {
   pointer-events: all;
 }
 
+.dropzone-overlay * {
+  pointer-events: none;
+}
+
 .drop-message {
   padding: 3rem;
   border-radius: 1.5rem;

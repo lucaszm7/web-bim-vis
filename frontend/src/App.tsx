@@ -74,6 +74,7 @@ function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewerRef = useRef<IfcViewer | null>(null);
   const rafRef = useRef<number>(0);
+  const dragCounterRef = useRef(0);
 
   // Pointer state for orbit controls
   const pointerRef = useRef({ down: false, lastX: 0, lastY: 0 });
@@ -192,10 +193,29 @@ function App() {
   }, []);
 
   // ── DnD ──────────────────────────────────────────────────────────────────
-  const onDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); }, []);
-  const onDragLeave = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); }, []);
+  const onDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current++;
+    if (dragCounterRef.current === 1) {
+      setIsDragging(true);
+    }
+  }, []);
+
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
+
+  const onDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
+  }, []);
+
   const onDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
+    dragCounterRef.current = 0;
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
     if (file?.name?.toLowerCase().endsWith('.ifc')) {
@@ -258,6 +278,7 @@ function App() {
   return (
     <div
       className="app-container"
+      onDragEnter={onDragEnter}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
