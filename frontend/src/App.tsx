@@ -93,8 +93,9 @@ function App() {
     return localStorage.getItem('autoLoadDuplex') === 'true';
   });
 
-  // Pointer state for orbit controls
-  const pointerRef = useRef({ down: false, lastX: 0, lastY: 0 });
+  // Pointer state for orbit + pan controls
+  // mode: 'orbit' = left btn, 'pan' = middle/right btn
+  const pointerRef = useRef({ down: false, lastX: 0, lastY: 0, mode: 'orbit' as 'orbit' | 'pan' });
 
   const processIfcContent = useCallback(async (name: string, text: string) => {
     setFileName(name);
@@ -286,10 +287,12 @@ function App() {
     return () => ro.disconnect();
   }, []);
 
-  // ── Orbit Controls ────────────────────────────────────────────────────────
+  // ── Orbit + Pan Controls ─────────────────────────────────────────────────
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     if (!hasGeometry) return;
-    pointerRef.current = { down: true, lastX: e.clientX, lastY: e.clientY };
+    // button 0 = left (orbit), button 1 = middle (pan), button 2 = right (pan)
+    const mode = e.button === 0 ? 'orbit' : 'pan';
+    pointerRef.current = { down: true, lastX: e.clientX, lastY: e.clientY, mode };
     (e.target as Element).setPointerCapture(e.pointerId);
   }, [hasGeometry]);
 
@@ -300,17 +303,32 @@ function App() {
     const dy = e.clientY - p.lastY;
     p.lastX = e.clientX;
     p.lastY = e.clientY;
-    viewerRef.current.orbit_camera(dx, dy);
+    if (p.mode === 'pan') {
+      viewerRef.current.pan_camera(dx, dy);
+    } else {
+      viewerRef.current.orbit_camera(dx, dy);
+    }
   }, []);
 
   const onPointerUp = useCallback(() => {
     pointerRef.current.down = false;
   }, []);
 
-  const onWheel = useCallback((e: React.WheelEvent) => {
-    if (!viewerRef.current) return;
+  // Suppress right-click context menu on the canvas
+  const onContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    viewerRef.current.zoom_camera(e.deltaY);
+  }, []);
+
+  // ── Non-passive wheel listener (fixes "Unable to preventDefault" warning) ──
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      if (viewerRef.current) viewerRef.current.zoom_camera(e.deltaY);
+    };
+    canvas.addEventListener('wheel', handler, { passive: false });
+    return () => canvas.removeEventListener('wheel', handler);
   }, []);
 
   // ── DnD ──────────────────────────────────────────────────────────────────
@@ -372,12 +390,18 @@ function App() {
           id="webgpu-canvas"
           ref={canvasRef}
           className="webgpu-canvas"
-          style={{ cursor: hasGeometry ? 'grab' : 'default' }}
+          style={{
+            cursor: !hasGeometry
+              ? 'default'
+              : pointerRef.current.down && pointerRef.current.mode === 'pan'
+                ? 'move'
+                : 'grab',
+          }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
-          onWheel={onWheel}
+          onContextMenu={onContextMenu}
         />
 
         {/* Toolbar overlay */}
